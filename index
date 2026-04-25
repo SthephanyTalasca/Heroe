@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quest Life — RPG de Produtividade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet" />
+  <style>
+    /* ── RESET & TOKENS ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #141720;
+      --surface2:  #1c2030;
+      --surface3:  #242840;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.14);
+      --gold:      #d4a955;
+      --gold-dim:  #8a6830;
+      --amethyst:  #8b6fbf;
+      --amethyst2: #c4a8f0;
+      --crimson:   #c0454a;
+      --teal:      #3da882;
+      --sky:       #5b9bd5;
+      --text:      #e8e2d4;
+      --text2:     #9a9080;
+      --text3:     #5a5448;
+      --ff-display: 'Cinzel', serif;
+      --ff-body:    'Crimson Pro', serif;
+      --radius:     6px;
+      --radius-lg:  12px;
+    }
+
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ff-body);
+      font-size: 1rem;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* subtle parchment grain overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── LAYOUT ────────────────────────────────────────────────── */
+    #app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── HUD / HEADER ───────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 18px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    .avatar-wrap { position: relative; flex-shrink: 0; }
+    .avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg, #2a1f4a, #4a2f1a);
+      border: 2px solid var(--gold-dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .lvl-pip {
+      position: absolute; bottom: -3px; right: -3px;
+      background: var(--gold); color: #1a0f00;
+      font-family: var(--ff-display); font-size: 9px;
+      padding: 1px 5px; border-radius: 99px;
+      border: 1.5px solid var(--bg);
+    }
+
+    .hero-info { flex-shrink: 0; }
+    .hero-name { font-family: var(--ff-display); font-size: 0.85rem; color: var(--gold); letter-spacing: 0.05em; }
+    .hero-title { font-size: 0.8rem; color: var(--text2); font-style: italic; }
+
+    .bars { display: flex; gap: 14px; flex: 1; }
+    .bar-group { flex: 1; min-width: 120px; }
+    .bar-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text3); margin-bottom: 4px; font-family: var(--ff-display); letter-spacing: 0.06em; }
+    .bar-meta span:last-child { color: var(--text2); font-family: var(--ff-body); letter-spacing: 0; }
+    .bar-track {
+      height: 5px; background: rgba(255,255,255,0.06);
+      border-radius: 99px; overflow: hidden;
+      border: 0.5px solid var(--border);
+    }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+    .bar-hp   { background: linear-gradient(90deg, var(--crimson), #e87a7f); }
+    .bar-xp   { background: linear-gradient(90deg, var(--amethyst), var(--amethyst2)); }
+
+    /* ── MAIN GRID ──────────────────────────────────────────────── */
+    main {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      flex: 1;
+    }
+
+    /* ── SIDEBAR ────────────────────────────────────────────────── */
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 14px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+
+    .sidebar-heading {
+      font-family: var(--ff-display); font-size: 0.65rem;
+      letter-spacing: 0.12em; color: var(--text3);
+      text-transform: uppercase; margin-bottom: 8px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+
+    .camp-btn {
+      width: 100%; text-align: left;
+      padding: 10px 12px; border-radius: var(--radius);
+      background: transparent; border: 1px solid transparent;
+      cursor: pointer; color: var(--text2);
+      font-family: var(--ff-body); font-size: 0.9rem;
+      transition: all 0.15s; line-height: 1.3;
+    }
+    .camp-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+    .camp-btn.active {
+      background: var(--surface3);
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+    .camp-btn-name { display: block; font-size: 0.88rem; }
+    .camp-btn-prog { display: block; font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .camp-btn.active .camp-btn-prog { color: var(--gold-dim); }
+
+    .btn-new-camp {
+      margin-top: auto; padding: 10px 14px;
+      background: transparent;
+      border: 1px solid var(--gold-dim);
+      border-radius: var(--radius);
+      color: var(--gold); cursor: pointer;
+      font-family: var(--ff-display); font-size: 0.72rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-new-camp:hover { background: rgba(212,169,85,0.08); border-color: var(--gold); }
+    .btn-new-camp:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── CONTENT ────────────────────────────────────────────────── */
+    section {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+
+    .camp-header { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .camp-title  { font-family: var(--ff-display); font-size: 1.5rem; color: var(--gold); line-height: 1.2; }
+    .camp-desc   { font-size: 1rem; color: var(--text2); margin-top: 6px; font-style: italic; }
+
+    .term-section { margin-bottom: 28px; }
+    .term-label {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--ff-display); font-size: 0.65rem;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 12px;
+    }
+    .term-pip { width: 6px; height: 6px; border-radius: 50%; }
+    .pip-short  { background: var(--sky); }
+    .pip-medium { background: var(--amethyst); }
+    .pip-long   { background: var(--gold); }
+
+    .task-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; margin-bottom: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.15s, opacity 0.3s;
+    }
+    .task-row:not(.done):hover { border-color: var(--border2); }
+    .task-row.done { opacity: 0.38; }
+
+    .task-check {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid var(--border2);
+      flex-shrink: 0; cursor: pointer; background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; font-size: 11px;
+    }
+    .task-check:hover:not(.done) { border-color: var(--teal); background: rgba(61,168,130,0.1); }
+    .task-check.done { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+    .task-text { flex: 1; font-size: 0.95rem; color: var(--text); }
+    .task-text.done { text-decoration: line-through; color: var(--text3); }
+
+    .xp-tag {
+      font-family: var(--ff-display); font-size: 0.68rem;
+      padding: 2px 8px; border-radius: 99px;
+      background: rgba(139,111,191,0.12);
+      border: 1px solid rgba(139,111,191,0.25);
+      color: var(--amethyst2); flex-shrink: 0;
+      letter-spacing: 0.06em;
+    }
+
+    .btn-fail {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      border: 1.5px solid var(--border2); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text3); font-size: 14px; line-height: 1;
+      transition: all 0.15s;
+    }
+    .btn-fail:hover { border-color: var(--crimson); background: rgba(192,69,74,0.1); color: var(--crimson); }
+
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 300px; gap: 10px; color: var(--text3);
+      font-style: italic; font-size: 1rem;
+    }
+    .empty-state .big { font-size: 2.5rem; }
+
+    /* ── MODAL ──────────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; padding: 20px;
+    }
+    .overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--surface2);
+      border: 1px solid var(--gold-dim);
+      border-radius: var(--radius-lg);
+      padding: 28px; width: 100%; max-width: 460px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    }
+    .modal-title { font-family: var(--ff-display); font-size: 1.1rem; color: var(--gold); margin-bottom: 4px; }
+    .modal-sub   { font-size: 0.9rem; color: var(--text2); font-style: italic; margin-bottom: 18px; }
+    .modal-key-hint {
+      font-size: 0.78rem; color: var(--text3);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 8px 12px;
+      margin-bottom: 14px; line-height: 1.5;
+    }
+    .modal-key-hint code {
+      font-family: monospace; font-size: 0.75rem;
+      background: rgba(255,255,255,0.08); padding: 1px 5px;
+      border-radius: 3px; color: var(--gold);
+    }
+    .modal textarea {
+      width: 100%; min-height: 110px; resize: vertical;
+      padding: 12px; font-family: var(--ff-body); font-size: 0.95rem;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius); color: var(--text);
+      outline: none; line-height: 1.5;
+    }
+    .modal textarea:focus { border-color: var(--gold-dim); }
+    .modal textarea::placeholder { color: var(--text3); font-style: italic; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .btn-cancel {
+      flex: 1; padding: 10px;
+      background: transparent; border: 1px solid var(--border2);
+      border-radius: var(--radius); cursor: pointer;
+      font-family: var(--ff-body); font-size: 0.9rem; color: var(--text2);
+    }
+    .btn-cancel:hover { background: var(--surface); }
+    .btn-generate {
+      flex: 2; padding: 10px;
+      background: var(--gold-dim); border: 1px solid var(--gold);
+      border-radius: var(--radius); cursor: pointer;
+      font-family: var(--ff-display); font-size: 0.75rem;
+      letter-spacing: 0.08em; text-transform: uppercase; color: #1a0f00;
+      transition: background 0.15s;
+    }
+    .btn-generate:hover:not(:disabled) { background: var(--gold); }
+    .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .modal-status { font-size: 0.82rem; margin-top: 10px; line-height: 1.5; }
+    .modal-status.error { color: var(--crimson); }
+    .modal-status.loading { color: var(--text2); font-style: italic; }
+
+    /* ── LEVEL-UP TOAST ─────────────────────────────────────────── */
+    #toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--gold); color: #1a0f00;
+      font-family: var(--ff-display); font-size: 0.8rem; letter-spacing: 0.08em;
+      padding: 8px 20px; border-radius: 99px;
+      box-shadow: 0 4px 20px rgba(212,169,85,0.35);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── RESPONSIVE ─────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-right: none; border-bottom: 1px solid var(--border); padding: 14px; }
+      header { flex-wrap: wrap; }
+      .bars { min-width: 100%; }
+      section { padding: 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HUD -->
+  <header>
+    <div class="avatar-wrap">
+      <div class="avatar">⚔️</div>
+      <span class="lvl-pip" id="lvl-pip">LV1</span>
+    </div>
+    <div class="hero-info">
+      <div class="hero-name">Herói da Vida Real</div>
+      <div class="hero-title" id="hero-title">Iniciante</div>
+    </div>
+    <div class="bars">
+      <div class="bar-group">
+        <div class="bar-meta"><span>HP</span><span id="hp-txt">100 / 100</span></div>
+        <div class="bar-track"><div class="bar-fill bar-hp" id="hp-bar" style="width:100%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-meta"><span>XP</span><span id="xp-txt">0 / 100</span></div>
+        <div class="bar-track"><div class="bar-fill bar-xp" id="xp-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Sidebar -->
+    <aside>
+      <div class="sidebar-heading">Campanhas</div>
+      <div id="camp-list"></div>
+      <button class="btn-new-camp" id="btn-new" onclick="openModal()">✦ Nova Campanha (IA)</button>
+    </aside>
+
+    <!-- Conteúdo -->
+    <section id="content"></section>
+  </main>
+
+  <!-- Modal IA -->
+  <div class="overlay hidden" id="overlay">
+    <div class="modal">
+      <div class="modal-title">Invocar o Mestre do Jogo</div>
+      <div class="modal-sub">Descreva seu objetivo e a IA criará sua Campanha Épica.</div>
+
+      <!-- Instruções de API Key -->
+      <div class="modal-key-hint">
+        🔑 Coloque sua chave Gemini na variável <code>GEMINI_API_KEY</code> no início do arquivo <code>index.html</code> antes de usar esta função.
+      </div>
+
+      <textarea id="ai-prompt" placeholder="Ex: Quero emagrecer 8kg em 3 meses com exercícios e dieta equilibrada..."></textarea>
+      <div class="modal-status hidden" id="modal-status"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="btn-generate" id="btn-gen" onclick="generateCampaign()">Forjar Jornada</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast level-up -->
+  <div id="toast"></div>
+
+</div>
+
+<script>
+  // ════════════════════════════════════════════════════════════
+  // 🔑 COLOQUE SUA CHAVE DA API GEMINI AQUI
+  // Obtenha em: https://aistudio.google.com/app/apikey
+  // ════════════════════════════════════════════════════════════
+  const GEMINI_API_KEY = "SUA_CHAVE_AQUI";
+
+  // ── ESTADO ──────────────────────────────────────────────────
+  const TITLES = ['Iniciante','Aprendiz','Aventureiro','Herói','Campeão','Mestre Lendário'];
+
+  let state = {
+    level: 1,
+    xp: 0,
+    maxXp: 100,
+    hp: 100,
+    maxHp: 100,
+    activeId: 'c1',
+    campaigns: [
+      {
+        id: 'c1',
+        title: 'Jornada do Programador',
+        description: 'Aprenda os fundamentos de programação e construa seu primeiro projeto.',
+        tasks: [
+          { id: 't1', title: 'Assistir 1h de lógica de programação', term: 'short', xp: 20, done: false },
+          { id: 't2', title: 'Configurar o ambiente (VS Code + extensões)', term: 'short', xp: 30, done: false },
+          { id: 't3', title: 'Criar uma calculadora em JavaScript', term: 'medium', xp: 100, done: false },
+          { id: 't4', title: 'Publicar primeiro projeto no GitHub', term: 'medium', xp: 120, done: false },
+          { id: 't5', title: 'Finalizar o curso completo (60h)', term: 'long', xp: 500, done: false },
+        ]
+      }
+    ]
+  };
+
+  // ── GAMIFICAÇÃO ──────────────────────────────────────────────
+  function gainXp(amount) {
+    state.xp += amount;
+    if (state.xp >= state.maxXp) {
+      state.level++;
+      state.xp -= state.maxXp;
+      state.maxXp = Math.floor(state.maxXp * 1.5);
+      state.hp = state.maxHp;
+      showToast('⬆ Subiu para Nível ' + state.level + '!');
+    }
+    render();
+  }
+
+  function takeDamage(amount) {
+    state.hp -= amount;
+    if (state.hp <= 0) {
+      if (state.level > 1) {
+        state.level--;
+        state.maxXp = Math.floor(state.maxXp / 1.5);
+      }
+      state.xp = 0;
+      state.hp = state.maxHp;
+      showToast('💀 Derrotado! Renascendo...');
+    }
+    render();
+  }
+
+  function completeTask(campId, taskId) {
+    const camp = state.campaigns.find(c => c.id === campId);
+    const task = camp && camp.tasks.find(t => t.id === taskId);
+    if (!task || task.done) return;
+    task.done = true;
+    gainXp(task.xp);
+  }
+
+  function failTask(campId, taskId) {
+    takeDamage(25);
+  }
+
+  function selectCamp(id) {
+    state.activeId = id;
+    render();
+  }
+
+  // ── RENDER ───────────────────────────────────────────────────
+  function render() {
+    renderHUD();
+    renderSidebar();
+    renderContent();
+  }
+
+  function renderHUD() {
+    const { level, xp, maxXp, hp, maxHp } = state;
+    document.getElementById('lvl-pip').textContent   = 'LV' + level;
+    document.getElementById('hero-title').textContent = TITLES[Math.min(level - 1, TITLES.length - 1)];
+    document.getElementById('hp-txt').textContent    = hp + ' / ' + maxHp;
+    document.getElementById('xp-txt').textContent    = xp + ' / ' + maxXp;
+    document.getElementById('hp-bar').style.width    = Math.round((hp / maxHp) * 100) + '%';
+    document.getElementById('xp-bar').style.width    = Math.round((xp / maxXp) * 100) + '%';
+  }
+
+  function renderSidebar() {
+    const list = document.getElementById('camp-list');
+    list.innerHTML = state.campaigns.map(c => {
+      const done  = c.tasks.filter(t => t.done).length;
+      const total = c.tasks.length;
+      const active = c.id === state.activeId ? 'active' : '';
+      return `<button class="camp-btn ${active}" onclick="selectCamp('${c.id}')">
+        <span class="camp-btn-name">${c.title}</span>
+        <span class="camp-btn-prog">${done} / ${total} missões</span>
+      </button>`;
+    }).join('');
+  }
+
+  function renderContent() {
+    const camp = state.campaigns.find(c => c.id === state.activeId);
+    const section = document.getElementById('content');
+
+    if (!camp) {
+      section.innerHTML = `<div class="empty-state">
+        <span class="big">⚔️</span>
+        <span>Nenhuma campanha selecionada.</span>
+        <span>Crie uma jornada para começar.</span>
+      </div>`;
+      return;
+    }
+
+    const termConfig = [
+      { key: 'short',  label: 'Missões Diárias / Semanais', pipClass: 'pip-short'  },
+      { key: 'medium', label: 'Objetivos Mensais',           pipClass: 'pip-medium' },
+      { key: 'long',   label: 'Grande Missão',               pipClass: 'pip-long'   },
+    ];
+
+    let html = `<div class="camp-header">
+      <div class="camp-title">${camp.title}</div>
+      <div class="camp-desc">${camp.description}</div>
+    </div>`;
+
+    termConfig.forEach(({ key, label, pipClass }) => {
+      const tasks = camp.tasks.filter(t => t.term === key);
+      if (!tasks.length) return;
+
+      const taskRows = tasks.map(t => {
+        const doneClass = t.done ? 'done' : '';
+        const checkMark = t.done ? '✓' : '';
+        const failBtn   = !t.done
+          ? `<button class="btn-fail" title="Perder prazo (−25 HP)" onclick="failTask('${camp.id}','${t.id}')">×</button>`
+          : '';
+        return `<div class="task-row ${doneClass}">
+          <div class="task-check ${doneClass}" onclick="completeTask('${camp.id}','${t.id}')">${checkMark}</div>
+          <span class="task-text ${doneClass}">${t.title}</span>
+          <span class="xp-tag">${t.xp} XP</span>
+          ${failBtn}
+        </div>`;
+      }).join('');
+
+      html += `<div class="term-section">
+        <div class="term-label"><span class="term-pip ${pipClass}"></span>${label}</div>
+        ${taskRows}
+      </div>`;
+    });
+
+    section.innerHTML = html;
+  }
+
+  // ── TOAST ────────────────────────────────────────────────────
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── MODAL ────────────────────────────────────────────────────
+  function openModal()  { document.getElementById('overlay').classList.remove('hidden'); clearStatus(); }
+  function closeModal() { document.getElementById('overlay').classList.add('hidden'); document.getElementById('ai-prompt').value = ''; clearStatus(); }
+  function clearStatus() { const s = document.getElementById('modal-status'); s.className = 'modal-status hidden'; s.textContent = ''; }
+  function setStatus(msg, type) { const s = document.getElementById('modal-status'); s.className = 'modal-status ' + type; s.textContent = msg; }
+
+  // ── GEMINI API ───────────────────────────────────────────────
+  async function generateCampaign() {
+    const prompt = document.getElementById('ai-prompt').value.trim();
+    if (!prompt) return;
+
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SUA_CHAVE_AQUI') {
+      setStatus('⚠ Adicione sua chave Gemini na variável GEMINI_API_KEY no início do arquivo.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-gen');
+    btn.disabled = true;
+    setStatus('⟳ O Mestre do Jogo está forjando sua jornada...', 'loading');
+
+    const systemInstruction = `Atue como um Game Master de um app de produtividade gamificado.
+O usuário fornecerá um objetivo pessoal. Crie uma "Campanha Épica" com missões divididas em:
+- short: curto prazo (diário/semanal), XP entre 10 e 40
+- medium: médio prazo (mensal), XP entre 50 e 150
+- long: longo prazo (semestral/anual), XP entre 200 e 800
+Gere entre 4 e 7 tarefas no total. Seja específico e motivador.`;
+
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            title:       { type: "STRING" },
+            description: { type: "STRING" },
+            tasks: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  id:    { type: "STRING" },
+                  title: { type: "STRING" },
+                  term:  { type: "STRING", enum: ["short", "medium", "long"] },
+                  xp:    { type: "INTEGER" }
+                },
+                required: ["id", "title", "term", "xp"]
+              }
+            }
+          },
+          required: ["title", "description", "tasks"]
+        }
+      }
+    };
+
+    const model = "gemini-2.0-flash";
+    const url   = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || 'Erro na API Gemini (status ' + res.status + ')');
+      }
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Resposta inesperada da IA.');
+
+      const parsed = JSON.parse(text);
+
+      const newCamp = {
+        id: 'c' + Date.now(),
+        title: parsed.title,
+        description: parsed.description,
+        tasks: parsed.tasks.map(t => ({ ...t, done: false }))
+      };
+
+      state.campaigns.push(newCamp);
+      state.activeId = newCamp.id;
+      closeModal();
+      render();
+
+    } catch (e) {
+      console.error(e);
+      setStatus('❌ ' + (e.message || 'A magia falhou. Tente novamente.'), 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // Fechar modal clicando fora
+  document.getElementById('overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ── INIT ─────────────────────────────────────────────────────
+  render();
+</script>
+</body>
+</html>
