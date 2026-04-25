@@ -119,6 +119,17 @@
       text-transform: uppercase; margin-bottom: 8px;
       padding-bottom: 8px; border-bottom: 1px solid var(--border);
     }
+    .sidebar-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .btn-stats {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text2);
+      border-radius: var(--radius);
+      width: 30px; height: 30px;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .btn-stats:hover { border-color: var(--gold-dim); color: var(--gold); }
 
     .camp-btn {
       width: 100%; text-align: left;
@@ -159,8 +170,27 @@
     }
 
     .camp-header { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .camp-actions { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-subtle {
+      padding: 8px 10px; border-radius: var(--radius);
+      border: 1px solid var(--border2); background: transparent;
+      color: var(--text2); cursor: pointer; font-size: 0.8rem;
+    }
+    .btn-subtle:hover { border-color: var(--gold-dim); color: var(--gold); }
     .camp-title  { font-family: var(--ff-display); font-size: 1.5rem; color: var(--gold); line-height: 1.2; }
     .camp-desc   { font-size: 1rem; color: var(--text2); margin-top: 6px; font-style: italic; }
+
+    .term-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .term-tab {
+      background: transparent; border: 1px solid transparent; cursor: pointer;
+      color: var(--text3); border-radius: 99px; padding: 7px 12px;
+      font-size: 0.82rem; white-space: nowrap;
+    }
+    .term-tab:hover { color: var(--text2); background: var(--surface); }
+    .term-tab.active { color: var(--gold); border-color: var(--gold-dim); background: rgba(212,169,85,0.08); }
 
     .term-section { margin-bottom: 28px; }
     .term-label {
@@ -284,6 +314,18 @@
     .modal-status.error { color: var(--crimson); }
     .modal-status.loading { color: var(--text2); font-style: italic; }
 
+    .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+    .stats-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+    }
+    .stats-label { font-size: 0.75rem; color: var(--text3); }
+    .stats-value { font-family: var(--ff-display); color: var(--gold); font-size: 1rem; margin-top: 4px; }
+    .chart-wrap { display: flex; align-items: end; gap: 6px; height: 180px; margin-top: 12px; }
+    .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 8px; }
+    .chart-bar { width: 100%; max-width: 24px; border-radius: 4px 4px 0 0; background: var(--amethyst); min-height: 3px; }
+    .chart-label { font-size: 0.66rem; color: var(--text3); }
+
     /* ── LEVEL-UP TOAST ─────────────────────────────────────────── */
     #toast {
       position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
@@ -335,7 +377,10 @@
   <main>
     <!-- Sidebar -->
     <aside>
-      <div class="sidebar-heading">Campanhas</div>
+      <div class="sidebar-top">
+        <div class="sidebar-heading" style="margin:0;padding:0;border:0;">Campanhas</div>
+        <button class="btn-stats" onclick="openStatsModal()" title="Ver estatísticas">📊</button>
+      </div>
       <div id="camp-list"></div>
       <button class="btn-new-camp" id="btn-new" onclick="openModal()">✦ Nova Campanha (IA)</button>
     </aside>
@@ -347,8 +392,8 @@
   <!-- Modal IA -->
   <div class="overlay hidden" id="overlay">
     <div class="modal">
-      <div class="modal-title">Invocar o Mestre do Jogo</div>
-      <div class="modal-sub">Descreva seu objetivo e a IA criará sua Campanha Épica.</div>
+      <div class="modal-title" id="modal-title">Invocar o Mestre do Jogo</div>
+      <div class="modal-sub" id="modal-sub">Descreva seu objetivo e a IA criará sua Campanha Épica.</div>
 
       <!-- Instruções de API Key -->
       <div class="modal-key-hint">
@@ -361,6 +406,33 @@
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
         <button class="btn-generate" id="btn-gen" onclick="generateCampaign()">Forjar Jornada</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Estatísticas -->
+  <div class="overlay hidden" id="stats-overlay">
+    <div class="modal">
+      <div class="modal-title">Seu Desempenho</div>
+      <div class="modal-sub">Resumo de progresso por período.</div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="setStatsFilter('week')">Semana</button>
+        <button class="btn-cancel" onclick="setStatsFilter('month')">Mês</button>
+        <button class="btn-cancel" onclick="setStatsFilter('year')">Ano</button>
+      </div>
+      <div id="stats-chart" class="chart-wrap"></div>
+      <div class="stats-grid">
+        <div class="stats-card">
+          <div class="stats-label">XP Total Acumulado</div>
+          <div class="stats-value" id="stats-xp-total">0 XP</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-label">Conclusão da Campanha Ativa</div>
+          <div class="stats-value" id="stats-camp-progress">0%</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeStatsModal()">Fechar</button>
       </div>
     </div>
   </div>
@@ -384,6 +456,9 @@
     hp: 100,
     maxHp: 100,
     activeId: 'c1',
+    activeTab: 'short',
+    statsFilter: 'week',
+    aiMode: 'create',
     campaigns: [
       {
         id: 'c1',
@@ -392,6 +467,7 @@
         tasks: [
           { id: 't1', title: 'Assistir 1h de lógica de programação', term: 'short', xp: 20, done: false },
           { id: 't2', title: 'Configurar o ambiente (VS Code + extensões)', term: 'short', xp: 30, done: false },
+          { id: 't2w', title: 'Resolver 3 exercícios de algoritmos', term: 'weekly', xp: 80, done: false },
           { id: 't3', title: 'Criar uma calculadora em JavaScript', term: 'medium', xp: 100, done: false },
           { id: 't4', title: 'Publicar primeiro projeto no GitHub', term: 'medium', xp: 120, done: false },
           { id: 't5', title: 'Finalizar o curso completo (60h)', term: 'long', xp: 500, done: false },
@@ -443,6 +519,16 @@
     state.activeId = id;
     render();
   }
+  function setActiveTab(tab) {
+    state.activeTab = tab;
+    render();
+  }
+  function resetDailyHabits() {
+    const camp = state.campaigns.find(c => c.id === state.activeId);
+    if (!camp) return;
+    camp.tasks = camp.tasks.map(task => task.term === 'short' ? ({ ...task, done: false }) : task);
+    render();
+  }
 
   // ── RENDER ───────────────────────────────────────────────────
   function render() {
@@ -487,40 +573,58 @@
       return;
     }
 
-    const termConfig = [
-      { key: 'short',  label: 'Missões Diárias / Semanais', pipClass: 'pip-short'  },
-      { key: 'medium', label: 'Objetivos Mensais',           pipClass: 'pip-medium' },
-      { key: 'long',   label: 'Grande Missão',               pipClass: 'pip-long'   },
+    const termMeta = {
+      short: { label: 'Hábitos Diários', pipClass: 'pip-short' },
+      weekly: { label: 'Metas da Semana', pipClass: 'pip-short' },
+      medium: { label: 'Sub-metas Mensais', pipClass: 'pip-medium' },
+      long: { label: 'Objetivo Principal', pipClass: 'pip-long' }
+    };
+    const tabs = [
+      { key: 'short', label: 'Hoje' },
+      { key: 'weekly', label: 'Semana' },
+      { key: 'medium', label: 'Mês' },
+      { key: 'long', label: 'Ano' }
     ];
 
     let html = `<div class="camp-header">
       <div class="camp-title">${camp.title}</div>
       <div class="camp-desc">${camp.description}</div>
+      <div class="camp-actions">
+        <button class="btn-subtle" onclick="resetDailyHabits()">↺ Novo Dia (resetar hábitos)</button>
+        <button class="btn-subtle" onclick="openModal('recalculate')">⟳ Recalcular rota</button>
+      </div>
     </div>`;
 
-    termConfig.forEach(({ key, label, pipClass }) => {
-      const tasks = camp.tasks.filter(t => t.term === key);
-      if (!tasks.length) return;
+    html += `<div class="term-tabs">${tabs.map(tab => {
+      const activeClass = tab.key === state.activeTab ? 'active' : '';
+      return `<button class="term-tab ${activeClass}" onclick="setActiveTab('${tab.key}')">${tab.label}</button>`;
+    }).join('')}</div>`;
 
-      const taskRows = tasks.map(t => {
-        const doneClass = t.done ? 'done' : '';
-        const checkMark = t.done ? '✓' : '';
-        const failBtn   = !t.done
-          ? `<button class="btn-fail" title="Perder prazo (−25 HP)" onclick="failTask('${camp.id}','${t.id}')">×</button>`
-          : '';
-        return `<div class="task-row ${doneClass}">
-          <div class="task-check ${doneClass}" onclick="completeTask('${camp.id}','${t.id}')">${checkMark}</div>
-          <span class="task-text ${doneClass}">${t.title}</span>
-          <span class="xp-tag">${t.xp} XP</span>
-          ${failBtn}
-        </div>`;
-      }).join('');
+    const currentTasks = camp.tasks.filter(t => t.term === state.activeTab);
+    if (!currentTasks.length) {
+      section.innerHTML = html + `<div class="empty-state"><span>Nenhuma missão neste período.</span></div>`;
+      return;
+    }
 
-      html += `<div class="term-section">
-        <div class="term-label"><span class="term-pip ${pipClass}"></span>${label}</div>
-        ${taskRows}
+    const taskRows = currentTasks.map(t => {
+      const doneClass = t.done ? 'done' : '';
+      const checkMark = t.done ? '✓' : '';
+      const failBtn   = !t.done
+        ? `<button class="btn-fail" title="Perder prazo (−25 HP)" onclick="failTask('${camp.id}','${t.id}')">×</button>`
+        : '';
+      return `<div class="task-row ${doneClass}">
+        <div class="task-check ${doneClass}" onclick="completeTask('${camp.id}','${t.id}')">${checkMark}</div>
+        <span class="task-text ${doneClass}">${t.title}</span>
+        <span class="xp-tag">${t.xp} XP</span>
+        ${failBtn}
       </div>`;
-    });
+    }).join('');
+
+    const term = termMeta[state.activeTab];
+    html += `<div class="term-section">
+      <div class="term-label"><span class="term-pip ${term.pipClass}"></span>${term.label}</div>
+      ${taskRows}
+    </div>`;
 
     section.innerHTML = html;
   }
@@ -534,10 +638,59 @@
   }
 
   // ── MODAL ────────────────────────────────────────────────────
-  function openModal()  { document.getElementById('overlay').classList.remove('hidden'); clearStatus(); }
+  function openModal(mode = 'create')  {
+    state.aiMode = mode;
+    const title = document.getElementById('modal-title');
+    const sub = document.getElementById('modal-sub');
+    if (mode === 'recalculate') {
+      title.textContent = 'Recalcular Rota da Campanha';
+      sub.textContent = 'Descreva o que mudou para ajustar a campanha atual.';
+    } else {
+      title.textContent = 'Invocar o Mestre do Jogo';
+      sub.textContent = 'Descreva seu objetivo e a IA criará sua Campanha Épica.';
+    }
+    document.getElementById('overlay').classList.remove('hidden');
+    clearStatus();
+  }
   function closeModal() { document.getElementById('overlay').classList.add('hidden'); document.getElementById('ai-prompt').value = ''; clearStatus(); }
   function clearStatus() { const s = document.getElementById('modal-status'); s.className = 'modal-status hidden'; s.textContent = ''; }
   function setStatus(msg, type) { const s = document.getElementById('modal-status'); s.className = 'modal-status ' + type; s.textContent = msg; }
+  function openStatsModal() {
+    document.getElementById('stats-overlay').classList.remove('hidden');
+    renderStatsModal();
+  }
+  function closeStatsModal() {
+    document.getElementById('stats-overlay').classList.add('hidden');
+  }
+  function setStatsFilter(filter) {
+    state.statsFilter = filter;
+    renderStatsModal();
+  }
+  function getGraphData() {
+    if (state.statsFilter === 'week') {
+      return [{ label: 'Seg', value: 80 }, { label: 'Ter', value: 60 }, { label: 'Qua', value: 100 }, { label: 'Qui', value: 40 }, { label: 'Sex', value: 90 }, { label: 'Sáb', value: 30 }, { label: 'Dom', value: 70 }];
+    }
+    if (state.statsFilter === 'month') {
+      return [{ label: 'Sem1', value: 85 }, { label: 'Sem2', value: 60 }, { label: 'Sem3', value: 95 }, { label: 'Sem4', value: 75 }];
+    }
+    return [{ label: 'Jan', value: 40 }, { label: 'Fev', value: 60 }, { label: 'Mar', value: 80 }, { label: 'Abr', value: 70 }, { label: 'Mai', value: 90 }, { label: 'Jun', value: 100 }];
+  }
+  function renderStatsModal() {
+    const chart = document.getElementById('stats-chart');
+    if (!chart) return;
+    chart.innerHTML = getGraphData().map(item => `
+      <div class="chart-col">
+        <div class="chart-bar" style="height:${Math.max(2, item.value)}%;"></div>
+        <span class="chart-label">${item.label}</span>
+      </div>
+    `).join('');
+    const camp = state.campaigns.find(c => c.id === state.activeId);
+    const done = camp ? camp.tasks.filter(t => t.done).length : 0;
+    const total = camp ? camp.tasks.length : 0;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById('stats-camp-progress').textContent = `${percent}%`;
+    document.getElementById('stats-xp-total').textContent = `${state.xp + ((state.level - 1) * 100)} XP`;
+  }
 
   // ── GEMINI API ───────────────────────────────────────────────
   async function generateCampaign() {
@@ -550,16 +703,22 @@
 
     const systemInstruction = `Atue como um Game Master de um app de produtividade gamificado.
 O usuário fornecerá um objetivo pessoal. Crie uma "Campanha Épica" com missões divididas em:
-- short: curto prazo (diário/semanal), XP entre 10 e 40
-- medium: médio prazo (mensal), XP entre 50 e 150
-- long: longo prazo (semestral/anual), XP entre 200 e 800
-Gere entre 4 e 7 tarefas no total. Seja específico e motivador.`;
+- short: hábitos diários, XP entre 10 e 40
+- weekly: metas semanais, XP entre 50 e 100
+- medium: sub-metas mensais, XP entre 100 e 300
+- long: objetivo anual/final, XP entre 500 e 1000
+Gere de 2 a 4 short, 2 a 3 weekly, 3 a 6 medium e 1 long. Seja específico e motivador.`;
+
+    const activeCampaign = state.campaigns.find(c => c.id === state.activeId);
+    const finalPrompt = state.aiMode === 'recalculate' && activeCampaign
+      ? `Campanha atual: ${activeCampaign.title}. Descrição atual: ${activeCampaign.description}. Situação nova do usuário: ${prompt}`
+      : prompt;
 
     try {
       const res = await fetch(CAMPAIGN_API_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, systemInstruction })
+        body: JSON.stringify({ prompt: finalPrompt, systemInstruction })
       });
 
       if (!res.ok) {
@@ -579,8 +738,14 @@ Gere entre 4 e 7 tarefas no total. Seja específico e motivador.`;
         tasks: parsed.tasks.map(t => ({ ...t, done: false }))
       };
 
-      state.campaigns.push(newCamp);
-      state.activeId = newCamp.id;
+      if (state.aiMode === 'recalculate' && activeCampaign) {
+        activeCampaign.title = parsed.title;
+        activeCampaign.description = parsed.description;
+        activeCampaign.tasks = parsed.tasks.map(t => ({ ...t, done: false }));
+      } else {
+        state.campaigns.push(newCamp);
+        state.activeId = newCamp.id;
+      }
       closeModal();
       render();
 
@@ -595,6 +760,9 @@ Gere entre 4 e 7 tarefas no total. Seja específico e motivador.`;
   // Fechar modal clicando fora
   document.getElementById('overlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
+  });
+  document.getElementById('stats-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeStatsModal();
   });
 
   // ── INIT ─────────────────────────────────────────────────────
