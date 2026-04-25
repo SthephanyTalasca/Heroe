@@ -352,7 +352,8 @@
 
       <!-- Instruções de API Key -->
       <div class="modal-key-hint">
-        🔑 Coloque sua chave Gemini na variável <code>GEMINI_API_KEY</code> no início do arquivo <code>index.html</code> antes de usar esta função.
+        🔐 A chave Gemini fica protegida no backend (Vercel Environment Variables).
+        No front-end, a geração usa apenas a rota <code>/api/generate-campaign</code>.
       </div>
 
       <textarea id="ai-prompt" placeholder="Ex: Quero emagrecer 8kg em 3 meses com exercícios e dieta equilibrada..."></textarea>
@@ -370,11 +371,8 @@
 </div>
 
 <script>
-  // ════════════════════════════════════════════════════════════
-  // 🔑 COLOQUE SUA CHAVE DA API GEMINI AQUI
-  // Obtenha em: https://aistudio.google.com/app/apikey
-  // ════════════════════════════════════════════════════════════
-  const GEMINI_API_KEY = "SUA_CHAVE_AQUI";
+  // Endpoint do backend (Vercel Function) responsável por chamar a Gemini API.
+  const CAMPAIGN_API_ENDPOINT = '/api/generate-campaign';
 
   // ── ESTADO ──────────────────────────────────────────────────
   const TITLES = ['Iniciante','Aprendiz','Aventureiro','Herói','Campeão','Mestre Lendário'];
@@ -546,11 +544,6 @@
     const prompt = document.getElementById('ai-prompt').value.trim();
     if (!prompt) return;
 
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SUA_CHAVE_AQUI') {
-      setStatus('⚠ Adicione sua chave Gemini na variável GEMINI_API_KEY no início do arquivo.', 'error');
-      return;
-    }
-
     const btn = document.getElementById('btn-gen');
     btn.disabled = true;
     setStatus('⟳ O Mestre do Jogo está forjando sua jornada...', 'loading');
@@ -562,55 +555,22 @@ O usuário fornecerá um objetivo pessoal. Crie uma "Campanha Épica" com missõ
 - long: longo prazo (semestral/anual), XP entre 200 e 800
 Gere entre 4 e 7 tarefas no total. Seja específico e motivador.`;
 
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            title:       { type: "STRING" },
-            description: { type: "STRING" },
-            tasks: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  id:    { type: "STRING" },
-                  title: { type: "STRING" },
-                  term:  { type: "STRING", enum: ["short", "medium", "long"] },
-                  xp:    { type: "INTEGER" }
-                },
-                required: ["id", "title", "term", "xp"]
-              }
-            }
-          },
-          required: ["title", "description", "tasks"]
-        }
-      }
-    };
-
-    const model = "gemini-2.0-flash";
-    const url   = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-
     try {
-      const res = await fetch(url, {
+      const res = await fetch(CAMPAIGN_API_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ prompt, systemInstruction })
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || 'Erro na API Gemini (status ' + res.status + ')');
+        throw new Error(err?.error || err?.message || 'Erro ao gerar campanha (status ' + res.status + ')');
       }
 
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('Resposta inesperada da IA.');
-
-      const parsed = JSON.parse(text);
+      const parsed = await res.json();
+      if (!parsed?.title || !Array.isArray(parsed?.tasks)) {
+        throw new Error('Resposta inesperada da IA.');
+      }
 
       const newCamp = {
         id: 'c' + Date.now(),
