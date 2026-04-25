@@ -34,7 +34,7 @@ export default async function handler(req, res) {
               properties: {
                 id: { type: 'STRING' },
                 title: { type: 'STRING' },
-                term: { type: 'STRING', enum: ['short', 'medium', 'long'] },
+                term: { type: 'STRING', enum: ['short', 'weekly', 'medium', 'long'] },
                 xp: { type: 'INTEGER' }
               },
               required: ['id', 'title', 'term', 'xp']
